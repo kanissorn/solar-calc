@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Load Calculator (Thailand)</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8">
+<div class="max-w-4xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Electrical Load Calculator</h1>
+    <p class="text-slate-500 mt-1">Estimate kW load from Ampere readings for solar inverter sizing (MEA/PEA, Thailand)</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6 bg-slate-200 p-1 rounded-xl w-full md:w-fit">
+    <button id="tabSingle" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-semibold text-sm transition bg-white shadow text-blue-600">Single-Phase</button>
+    <button id="tabThree" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-600">Three-Phase</button>
+  </div>
+
+  <!-- Save Project -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-6">
+    <div class="flex flex-col md:flex-row gap-3 md:items-end">
+      <div class="flex-1">
+        <label class="text-sm font-medium text-slate-600">Project Name</label>
+        <input id="projectName" type="text" placeholder="e.g. Somchai Residence, Bang Na" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <button id="btnSaveProject" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg transition">Save Result</button>
+    </div>
+    <p id="saveStatus" class="text-xs text-emerald-600 mt-2 hidden">Saved.</p>
+  </div>
+
+  <!-- Saved Projects -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-lg text-slate-700">Saved Projects</h2>
+      <span id="projectCount" class="text-xs text-slate-400">0 saved</span>
+    </div>
+    <div id="projectList" class="space-y-2">
+      <p id="noProjects" class="text-sm text-slate-400">No projects saved yet.</p>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <!-- Inputs -->
+    <div class="md:col-span-2 bg-white rounded-2xl shadow p-6">
+      <!-- Single Phase Panel -->
+      <div id="panelSingle">
+        <h2 class="font-semibold text-lg mb-4 text-slate-700">Single-Phase Inputs</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium text-slate-600">Current, I (A)</label>
+            <input id="s_amp" type="number" step="0.1" value="20" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">Voltage, V (V)</label>
+            <input id="s_volt" type="number" step="1" value="220" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm font-medium text-slate-600">Power Factor (PF)</label>
+            <input id="s_pf" type="number" step="0.01" min="0" max="1" value="0.85" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4">Formula: kW = (V × I × PF) / 1000</p>
+      </div>
+
+      <!-- Three Phase Panel -->
+      <div id="panelThree" class="hidden">
+        <h2 class="font-semibold text-lg mb-4 text-slate-700">Three-Phase Inputs</h2>
+        <div class="grid grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="text-sm font-medium text-slate-600">L1 Current (A)</label>
+            <input id="t_l1" type="number" step="0.1" value="20" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">L2 Current (A)</label>
+            <input id="t_l2" type="number" step="0.1" value="18" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">L3 Current (A)</label>
+            <input id="t_l3" type="number" step="0.1" value="15" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium text-slate-600">Line-to-Line Voltage (V)</label>
+            <input id="t_volt" type="number" step="1" value="380" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">Power Factor (PF)</label>
+            <input id="t_pf" type="number" step="0.01" min="0" max="1" value="0.85" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4">V_phase = V_line / √3 ≈ 220V &nbsp;|&nbsp; kW per phase = (V_phase × I_phase × PF) / 1000</p>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="space-y-4">
+      <div class="bg-blue-600 text-white rounded-2xl shadow p-5">
+        <p class="text-xs uppercase tracking-wide opacity-80">Total Load</p>
+        <p id="out_total" class="text-3xl font-bold mt-1">0.00 kW</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-400">Average Current</p>
+        <p id="out_avg" class="text-2xl font-bold text-slate-700 mt-1">0.00 A</p>
+      </div>
+      <div id="phaseBreakdown" class="bg-white rounded-2xl shadow p-5 hidden">
+        <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Phase Breakdown</p>
+        <div class="space-y-1 text-sm" id="phaseList"></div>
+      </div>
+      <div id="bottleneckBox" class="hidden bg-amber-50 border border-amber-300 rounded-2xl shadow p-5">
+        <p class="text-xs uppercase tracking-wide text-amber-600 font-semibold">Bottleneck Phase</p>
+        <p id="out_bottleneck" class="text-xl font-bold text-amber-700 mt-1">—</p>
+        <p class="text-xs text-amber-700 mt-2 leading-relaxed">For zero-export, phase-limited inverters, solar generation may be capped to match this lowest-current phase, to prevent reverse power flow (export) on that phase as required by MEA/PEA regulations.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SQRT3 = Math.sqrt(3);
+const tabSingle = document.getElementById('tabSingle');
+const tabThree = document.getElementById('tabThree');
+const panelSingle = document.getElementById('panelSingle');
+const panelThree = document.getElementById('panelThree');
+
+function activateSingle() {
+  tabSingle.classList.add('bg-white','shadow','text-blue-600');
+  tabSingle.classList.remove('text-slate-600');
+  tabThree.classList.remove('bg-white','shadow','text-blue-600');
+  tabThree.classList.add('text-slate-600');
+  panelSingle.classList.remove('hidden');
+  panelThree.classList.add('hidden');
+  calculate();
+}
+function activateThree() {
+  tabThree.classList.add('bg-white','shadow','text-blue-600');
+  tabThree.classList.remove('text-slate-600');
+  tabSingle.classList.remove('bg-white','shadow','text-blue-600');
+  tabSingle.classList.add('text-slate-600');
+  panelThree.classList.remove('hidden');
+  panelSingle.classList.add('hidden');
+  calculate();
+}
+tabSingle.addEventListener('click', activateSingle);
+tabThree.addEventListener('click', activateThree);
+
+const ids = ['s_amp','s_volt','s_pf','t_l1','t_l2','t_l3','t_volt','t_pf'];
+ids.forEach(id => document.getElementById(id).addEventListener('input', calculate));
+
+function fmt(n) { return isFinite(n) ? n.toFixed(2) : '0.00'; }
+
+function calculate() {
+  const isThree = !panelThree.classList.contains('hidden');
+  const phaseBreakdown = document.getElementById('phaseBreakdown');
+  const bottleneckBox = document.getElementById('bottleneckBox');
+
+  if (!isThree) {
+    const I = parseFloat(document.getElementById('s_amp').value) || 0;
+    const V = parseFloat(document.getElementById('s_volt').value) || 0;
+    const PF = parseFloat(document.getElementById('s_pf').value) || 0;
+    const kW = (V * I * PF) / 1000;
+
+    document.getElementById('out_total').textContent = fmt(kW) + ' kW';
+    document.getElementById('out_avg').textContent = fmt(I) + ' A';
+    phaseBreakdown.classList.add('hidden');
+    bottleneckBox.classList.add('hidden');
+  } else {
+    const l1 = parseFloat(document.getElementById('t_l1').value) || 0;
+    const l2 = parseFloat(document.getElementById('t_l2').value) || 0;
+    const l3 = parseFloat(document.getElementById('t_l3').value) || 0;
+    const Vline = parseFloat(document.getElementById('t_volt').value) || 0;
+    const PF = parseFloat(document.getElementById('t_pf').value) || 0;
+    const Vphase = Vline / SQRT3;
+
+    const kw1 = (Vphase * l1 * PF) / 1000;
+    const kw2 = (Vphase * l2 * PF) / 1000;
+    const kw3 = (Vphase * l3 * PF) / 1000;
+    const total = kw1 + kw2 + kw3;
+    const avg = (l1 + l2 + l3) / 3;
+
+    document.getElementById('out_total').textContent = fmt(total) + ' kW';
+    document.getElementById('out_avg').textContent = fmt(avg) + ' A';
+
+    const phases = [
+      { name: 'L1', i: l1, kw: kw1 },
+      { name: 'L2', i: l2, kw: kw2 },
+      { name: 'L3', i: l3, kw: kw3 },
+    ];
+    const min = phases.reduce((a, b) => (b.i < a.i ? b : a));
+
+    phaseBreakdown.classList.remove('hidden');
+    const phaseList = document.getElementById('phaseList');
+    phaseList.innerHTML = phases.map(p => `
+      <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0 ${p.name === min.name ? 'text-amber-600 font-semibold' : 'text-slate-600'}">
+        <span>${p.name} ${p.name === min.name ? '⚠' : ''}</span>
+        <span>${fmt(p.i)} A &nbsp;→&nbsp; ${fmt(p.kw)} kW</span>
+      </div>
+    `).join('');
+
+    bottleneckBox.classList.remove('hidden');
+    document.getElementById('out_bottleneck').textContent = `${min.name} (${fmt(min.i)} A)`;
+  }
+}
+
+calculate();
+
+// ---- Project Save/Load ----
+const STORAGE_KEY = 'solarCalcProjects';
+const projectList = document.getElementById('projectList');
+const noProjects = document.getElementById('noProjects');
+const projectCount = document.getElementById('projectCount');
+const projectNameInput = document.getElementById('projectName');
+const saveStatus = document.getElementById('saveStatus');
+
+function loadProjects() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+function persistProjects(projects) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+
+function currentSnapshot() {
+  const isThree = !panelThree.classList.contains('hidden');
+  if (!isThree) {
+    return {
+      mode: 'single',
+      inputs: {
+        amp: document.getElementById('s_amp').value,
+        volt: document.getElementById('s_volt').value,
+        pf: document.getElementById('s_pf').value,
+      },
+      results: {
+        totalKw: document.getElementById('out_total').textContent,
+        avgAmp: document.getElementById('out_avg').textContent,
+      },
+    };
+  }
+  return {
+    mode: 'three',
+    inputs: {
+      l1: document.getElementById('t_l1').value,
+      l2: document.getElementById('t_l2').value,
+      l3: document.getElementById('t_l3').value,
+      volt: document.getElementById('t_volt').value,
+      pf: document.getElementById('t_pf').value,
+    },
+    results: {
+      totalKw: document.getElementById('out_total').textContent,
+      avgAmp: document.getElementById('out_avg').textContent,
+      bottleneck: document.getElementById('out_bottleneck').textContent,
+    },
+  };
+}
+
+function applySnapshot(snap) {
+  if (snap.mode === 'single') {
+    activateSingle();
+    document.getElementById('s_amp').value = snap.inputs.amp;
+    document.getElementById('s_volt').value = snap.inputs.volt;
+    document.getElementById('s_pf').value = snap.inputs.pf;
+  } else {
+    activateThree();
+    document.getElementById('t_l1').value = snap.inputs.l1;
+    document.getElementById('t_l2').value = snap.inputs.l2;
+    document.getElementById('t_l3').value = snap.inputs.l3;
+    document.getElementById('t_volt').value = snap.inputs.volt;
+    document.getElementById('t_pf').value = snap.inputs.pf;
+  }
+  calculate();
+}
+
+function renderProjects() {
+  const projects = loadProjects();
+  projectCount.textContent = `${projects.length} saved`;
+  if (projects.length === 0) {
+    noProjects.classList.remove('hidden');
+    projectList.innerHTML = '';
+    projectList.appendChild(noProjects);
+    return;
+  }
+  noProjects.classList.add('hidden');
+  projectList.innerHTML = projects.map((p, idx) => `
+    <div class="flex items-center justify-between border border-slate-200 rounded-lg px-4 py-3">
+      <div>
+        <p class="font-semibold text-slate-700">${escapeHtml(p.name)}</p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          ${p.mode === 'single' ? 'Single-Phase' : 'Three-Phase'} &middot;
+          ${escapeHtml(p.results.totalKw)} &middot;
+          ${escapeHtml(p.savedAt)}
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button data-action="load" data-idx="${idx}" class="text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 rounded-md hover:bg-blue-50">Load</button>
+        <button data-action="delete" data-idx="${idx}" class="text-red-500 hover:text-red-700 text-sm font-medium px-3 py-1 rounded-md hover:bg-red-50">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+document.getElementById('btnSaveProject').addEventListener('click', () => {
+  const name = projectNameInput.value.trim();
+  if (!name) {
+    projectNameInput.focus();
+    return;
+  }
+  const projects = loadProjects();
+  const snapshot = currentSnapshot();
+  projects.unshift({
+    name,
+    savedAt: new Date().toLocaleString(),
+    ...snapshot,
+  });
+  persistProjects(projects);
+  renderProjects();
+  saveStatus.classList.remove('hidden');
+  setTimeout(() => saveStatus.classList.add('hidden'), 2000);
+  projectNameInput.value = '';
+});
+
+projectList.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const idx = Number(btn.dataset.idx);
+  const projects = loadProjects();
+  if (btn.dataset.action === 'load') {
+    applySnapshot(projects[idx]);
+  } else if (btn.dataset.action === 'delete') {
+    projects.splice(idx, 1);
+    persistProjects(projects);
+    renderProjects();
+  }
+});
+
+renderProjects();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
