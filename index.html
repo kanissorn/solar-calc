@@ -21,6 +21,7 @@
   <div class="flex gap-2 mb-6 bg-slate-200 p-1 rounded-xl w-full md:w-fit">
     <button id="tabSingle" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-semibold text-sm transition bg-white shadow text-blue-600">Single-Phase</button>
     <button id="tabThree" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-600">Three-Phase</button>
+    <button id="tabAc" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-600">AC BTU → kW</button>
   </div>
 
   <!-- Save Project -->
@@ -98,6 +99,30 @@
         </div>
         <p class="text-xs text-slate-400 mt-4">V_phase = V_line / √3 ≈ 220V &nbsp;|&nbsp; kW per phase = (V_phase × I_phase × PF) / 1000</p>
       </div>
+
+      <!-- AC BTU Panel -->
+      <div id="panelAc" class="hidden">
+        <h2 class="font-semibold text-lg mb-4 text-slate-700">Air Conditioner: BTU → kW</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium text-slate-600">Cooling Capacity (BTU/hr)</label>
+            <input id="ac_btu" type="number" step="1" value="12000" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">Efficiency, EER (BTU/hr per Watt)</label>
+            <input id="ac_eer" type="number" step="0.1" min="0.1" value="11" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">Voltage, V (V)</label>
+            <input id="ac_volt" type="number" step="1" value="220" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-600">Power Factor (PF)</label>
+            <input id="ac_pf" type="number" step="0.01" min="0" max="1" value="0.95" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4">Cooling kW = BTU/hr ÷ 3412.14 &nbsp;|&nbsp; Electrical Input kW = BTU/hr ÷ (EER × 1000) &nbsp;|&nbsp; I = (Input kW × 1000) / (V × PF)</p>
+      </div>
     </div>
 
     <!-- Summary -->
@@ -114,6 +139,12 @@
         <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Phase Breakdown</p>
         <div class="space-y-1 text-sm" id="phaseList"></div>
       </div>
+      <div id="acBreakdown" class="bg-white rounded-2xl shadow p-5 hidden">
+        <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Cooling Capacity</p>
+        <p id="out_ac_cool" class="text-xl font-bold text-slate-700">0.00 kW</p>
+        <p class="text-xs text-slate-400 mt-3">Estimated Current Draw</p>
+        <p id="out_ac_amp" class="text-lg font-semibold text-slate-600">0.00 A</p>
+      </div>
       <div id="bottleneckBox" class="hidden bg-amber-50 border border-amber-300 rounded-2xl shadow p-5">
         <p class="text-xs uppercase tracking-wide text-amber-600 font-semibold">Bottleneck Phase</p>
         <p id="out_bottleneck" class="text-xl font-bold text-amber-700 mt-1">—</p>
@@ -127,41 +158,63 @@
 const SQRT3 = Math.sqrt(3);
 const tabSingle = document.getElementById('tabSingle');
 const tabThree = document.getElementById('tabThree');
+const tabAc = document.getElementById('tabAc');
 const panelSingle = document.getElementById('panelSingle');
 const panelThree = document.getElementById('panelThree');
+const panelAc = document.getElementById('panelAc');
+const tabs = [tabSingle, tabThree, tabAc];
+const panels = [panelSingle, panelThree, panelAc];
 
-function activateSingle() {
-  tabSingle.classList.add('bg-white','shadow','text-blue-600');
-  tabSingle.classList.remove('text-slate-600');
-  tabThree.classList.remove('bg-white','shadow','text-blue-600');
-  tabThree.classList.add('text-slate-600');
-  panelSingle.classList.remove('hidden');
-  panelThree.classList.add('hidden');
+function activateTab(activeTab, activePanel) {
+  tabs.forEach(t => {
+    if (t === activeTab) {
+      t.classList.add('bg-white','shadow','text-blue-600');
+      t.classList.remove('text-slate-600');
+    } else {
+      t.classList.remove('bg-white','shadow','text-blue-600');
+      t.classList.add('text-slate-600');
+    }
+  });
+  panels.forEach(p => p.classList.toggle('hidden', p !== activePanel));
   calculate();
 }
-function activateThree() {
-  tabThree.classList.add('bg-white','shadow','text-blue-600');
-  tabThree.classList.remove('text-slate-600');
-  tabSingle.classList.remove('bg-white','shadow','text-blue-600');
-  tabSingle.classList.add('text-slate-600');
-  panelThree.classList.remove('hidden');
-  panelSingle.classList.add('hidden');
-  calculate();
-}
+function activateSingle() { activateTab(tabSingle, panelSingle); }
+function activateThree() { activateTab(tabThree, panelThree); }
+function activateAc() { activateTab(tabAc, panelAc); }
 tabSingle.addEventListener('click', activateSingle);
 tabThree.addEventListener('click', activateThree);
+tabAc.addEventListener('click', activateAc);
 
-const ids = ['s_amp','s_volt','s_pf','t_l1','t_l2','t_l3','t_volt','t_pf'];
+const BTU_PER_KW = 3412.14;
+const ids = ['s_amp','s_volt','s_pf','t_l1','t_l2','t_l3','t_volt','t_pf','ac_btu','ac_eer','ac_volt','ac_pf'];
 ids.forEach(id => document.getElementById(id).addEventListener('input', calculate));
 
 function fmt(n) { return isFinite(n) ? n.toFixed(2) : '0.00'; }
 
 function calculate() {
   const isThree = !panelThree.classList.contains('hidden');
+  const isAc = !panelAc.classList.contains('hidden');
   const phaseBreakdown = document.getElementById('phaseBreakdown');
   const bottleneckBox = document.getElementById('bottleneckBox');
+  const acBreakdown = document.getElementById('acBreakdown');
 
-  if (!isThree) {
+  if (isAc) {
+    const btu = parseFloat(document.getElementById('ac_btu').value) || 0;
+    const eer = parseFloat(document.getElementById('ac_eer').value) || 0;
+    const V = parseFloat(document.getElementById('ac_volt').value) || 0;
+    const PF = parseFloat(document.getElementById('ac_pf').value) || 0;
+    const coolKw = btu / BTU_PER_KW;
+    const inputKw = eer > 0 ? btu / (eer * 1000) : 0;
+    const I = (V * PF) > 0 ? (inputKw * 1000) / (V * PF) : 0;
+
+    document.getElementById('out_total').textContent = fmt(inputKw) + ' kW';
+    document.getElementById('out_avg').textContent = fmt(I) + ' A';
+    document.getElementById('out_ac_cool').textContent = fmt(coolKw) + ' kW';
+    document.getElementById('out_ac_amp').textContent = fmt(I) + ' A';
+    acBreakdown.classList.remove('hidden');
+    phaseBreakdown.classList.add('hidden');
+    bottleneckBox.classList.add('hidden');
+  } else if (!isThree) {
     const I = parseFloat(document.getElementById('s_amp').value) || 0;
     const V = parseFloat(document.getElementById('s_volt').value) || 0;
     const PF = parseFloat(document.getElementById('s_pf').value) || 0;
@@ -171,6 +224,7 @@ function calculate() {
     document.getElementById('out_avg').textContent = fmt(I) + ' A';
     phaseBreakdown.classList.add('hidden');
     bottleneckBox.classList.add('hidden');
+    acBreakdown.classList.add('hidden');
   } else {
     const l1 = parseFloat(document.getElementById('t_l1').value) || 0;
     const l2 = parseFloat(document.getElementById('t_l2').value) || 0;
@@ -196,6 +250,7 @@ function calculate() {
     const min = phases.reduce((a, b) => (b.i < a.i ? b : a));
 
     phaseBreakdown.classList.remove('hidden');
+    acBreakdown.classList.add('hidden');
     const phaseList = document.getElementById('phaseList');
     phaseList.innerHTML = phases.map(p => `
       <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0 ${p.name === min.name ? 'text-amber-600 font-semibold' : 'text-slate-600'}">
@@ -232,6 +287,23 @@ function persistProjects(projects) {
 
 function currentSnapshot() {
   const isThree = !panelThree.classList.contains('hidden');
+  const isAc = !panelAc.classList.contains('hidden');
+  if (isAc) {
+    return {
+      mode: 'ac',
+      inputs: {
+        btu: document.getElementById('ac_btu').value,
+        eer: document.getElementById('ac_eer').value,
+        volt: document.getElementById('ac_volt').value,
+        pf: document.getElementById('ac_pf').value,
+      },
+      results: {
+        totalKw: document.getElementById('out_total').textContent,
+        avgAmp: document.getElementById('out_avg').textContent,
+        coolKw: document.getElementById('out_ac_cool').textContent,
+      },
+    };
+  }
   if (!isThree) {
     return {
       mode: 'single',
@@ -264,7 +336,13 @@ function currentSnapshot() {
 }
 
 function applySnapshot(snap) {
-  if (snap.mode === 'single') {
+  if (snap.mode === 'ac') {
+    activateAc();
+    document.getElementById('ac_btu').value = snap.inputs.btu;
+    document.getElementById('ac_eer').value = snap.inputs.eer;
+    document.getElementById('ac_volt').value = snap.inputs.volt;
+    document.getElementById('ac_pf').value = snap.inputs.pf;
+  } else if (snap.mode === 'single') {
     activateSingle();
     document.getElementById('s_amp').value = snap.inputs.amp;
     document.getElementById('s_volt').value = snap.inputs.volt;
@@ -295,7 +373,7 @@ function renderProjects() {
       <div>
         <p class="font-semibold text-slate-700">${escapeHtml(p.name)}</p>
         <p class="text-xs text-slate-400 mt-0.5">
-          ${p.mode === 'single' ? 'Single-Phase' : 'Three-Phase'} &middot;
+          ${p.mode === 'single' ? 'Single-Phase' : p.mode === 'three' ? 'Three-Phase' : 'AC BTU→kW'} &middot;
           ${escapeHtml(p.results.totalKw)} &middot;
           ${escapeHtml(p.savedAt)}
         </p>
